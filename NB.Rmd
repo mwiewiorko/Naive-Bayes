@@ -3,5 +3,128 @@ title: "Untitled"
 author: "Mateusz Wiewiórko"
 date: "7 maja 2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
+
+
+```{r}
+library("e1071")
+library("tidyverse")
+library("caret")
+```
+
+Zaczytanie danych
+```{r}
+dt<-read_csv("german_credit.csv")
+```
+
+
+MOdeyfikacja danych
+
+```{r}
+dt<-
+  dt %>% 
+  mutate_if(is.character,as.factor) %>% 
+  mutate_if(is.factor,fct_explicit_na)
+
+names(dt)<-make.names(names(dt))
+```
+
+
+
+```{r}
+m_nb<-
+  dt %>% 
+  select_if(is.factor) %>% 
+  naiveBayes(Risk~.,.)
+
+
+```
+
+gdy mamy mało liczne kategorie
+```{r}
+m_nb1<-
+  dt %>% 
+  select_if(is.factor) %>% 
+  naiveBayes(Risk~.,.,laplace = 1)
+
+p_nb1<-predict(m_nb1,dt,type = "raw")
+
+```
+
+
+
+Sprawdzenie - tabela krzyżowa
+```{r}
+descr::crosstab(dt$Risk,dt$Housing,prop.r = T)
+```
+
+Porównanie z inna metodą glm (CARET)
+```{r}
+set.seed(1)
+(m_glm<-
+  dt %>% 
+  select_if(is.factor) %>%
+  train(Risk~.,.,method="glm",family="binomial"))
+p_glm<-predict(m_glm,dt,type = "prob")
+
+```
+
+Porównanie z inna metodą naiveBayes (CARET)
+```{r}
+set.seed(1)
+
+
+m_nb<-
+  dt %>% 
+  select_if(is.factor) %>%
+  train(select(.,Risk),
+        select(.,-Risk),
+        method="nb",tuneGrid=data.frame(fL=1,usekernel=c(T,F),adjust = 1))
+
+
+
+
+p_nb<-predict(m_nb,dt,type = "prob")
+
+
+
+m_nb2<-
+  dt %>% 
+  select_if(is.factor) %>% 
+  klaR::NaiveBayes(Risk~.,.,fL = 1,usekernel =T)
+
+p_nb2<-predict(m_nb2,dt,type = "raw")$posterior
+
+
+
+```
+
+
+Porównanie z inna metodą naiveBayes (CARET)
+```{r}
+set.seed(1)
+
+
+(m_nb<-
+  dt %>% 
+  select_if(is.factor) %>%
+  train(Risk~.,.,method="nb",tuneGrid=data.frame(fL=0,usekernel=c(F),adjust = 0)))
+p_nb<-predict(m_nb,dt,type = "prob")
+
+
+
+
+```
+
+
+Wykres rozrzutu
+```{r}
+
+qplot(p_glm$good,p_nb2[,2])
+
+```
+
+
 
